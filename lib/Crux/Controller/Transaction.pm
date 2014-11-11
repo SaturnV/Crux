@@ -4,6 +4,6 @@ package Crux::Controller::Transaction;
 
 use Essence::Strict;
 
-use base qw( Crux::Controller Crux::Controller::TransactionMixin );
+use parent qw( Crux::Controller Crux::Controller::TransactionMixin );
 
 1

@@ -7,7 +7,7 @@ package Crux::Stash;
 
 use Essence::Strict;
 
-use base 'Blueprint::Stash';
+use parent 'Blueprint::Stash';
 
 use Scalar::Util qw( blessed );
 

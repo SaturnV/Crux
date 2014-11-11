@@ -7,7 +7,7 @@ package Crux::Model;
 
 use Essence::Strict;
 
-use base qw( Blueprint );
+use parent qw( Blueprint );
 
 use Scalar::Util;
 use Carp;

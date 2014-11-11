@@ -3,7 +3,7 @@
 
 package Crux::Controller::ApiMixin;
 
-use base qw( Crux::Controller::JsonMixin Crux::Controller::TransactionMixin );
+use parent qw( Crux::Controller::JsonMixin Crux::Controller::TransactionMixin );
 
 ###### IMPORTS ################################################################
 

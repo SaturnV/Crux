@@ -4,7 +4,7 @@ package Crux::Database;
 
 use Essence::Strict;
 
-use base 'Essence::Sql';
+use parent 'Essence::Sql';
 
 sub new
 {

@@ -4,7 +4,7 @@ package Crux::MojoLogger;
 
 use Essence::Strict;
 
-use base 'Mojo::Log';
+use parent 'Mojo::Log';
 
 use Essence::Logger qw();
 

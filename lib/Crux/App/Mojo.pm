@@ -8,7 +8,7 @@ package Crux::App::Mojo;
 use Essence::Strict;
 
 use Mojo::Base 'Mojolicious';
-use base 'Crux::App';
+use parent 'Crux::App';
 use mro 'c3';
 
 use Coro;

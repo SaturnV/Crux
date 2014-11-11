@@ -8,7 +8,7 @@ package Crux::Controller;
 use Essence::Strict;
 
 use Mojo::Base 'Mojolicious::Controller';
-use base 'Essence::Logger::Mixin';
+use parent 'Essence::Logger::Mixin';
 
 use Essence::UUID;
 use JSON;
