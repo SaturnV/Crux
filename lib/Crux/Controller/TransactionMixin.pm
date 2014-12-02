@@ -13,25 +13,13 @@ use Essence::Strict;
 
 sub wrap_transaction
 {
-  my ($self, @rest) = @_;
-  return $self->app()->WrapInTransaction(
+  my ($self, $s, @rest) = @_;
+  return $self->app()->WrapInTransaction($s,
       sub
       {
         # my ($s) = @_;
-        return $self->NextHandler(
-            $self->PrepareStash($_[0], @rest),
-            @rest);
+        return $self->NextHandler($_[0], @rest);
       });
-}
-
-# ==== Stash ==================================================================
-
-sub PrepareStash
-{
-  # my ($self, $s, @rest) = @_;
-  $_[1]->Set(
-      'crux.action' => $_[0]->stash('crux.action'));
-  return $_[1];
 }
 
 ###############################################################################

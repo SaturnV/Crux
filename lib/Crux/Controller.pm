@@ -18,6 +18,8 @@ use JSON;
 sub ClickId { return $_[0]->req()->{'Crux::ClickId'} }
 sub ShortId { return $_[0]->req()->{'Crux::ClickId::Short'} }
 
+# ---- UserAgent --------------------------------------------------------------
+
 sub UserAgent
 {
   return $_[0]->req()->content()->headers()->user_agent() // '<undef>';
@@ -27,6 +29,21 @@ sub UserAgentMatch
 {
   my ($self, $pattern) = @_;
   return (defined($pattern) && ($self->UserAgent() =~ /\Q$pattern\E/i));
+}
+
+# ==== $s =====================================================================
+
+sub PrepareStash
+{
+  my ($self, $s) = @_;
+  $s->Set('crux.action' => $self->stash('crux.action'));
+  return $s;
+}
+
+sub MakeStash
+{
+  my $self = shift;
+  return $self->PrepareStash($self->app()->MakeStash(@_));
 }
 
 # ==== MojoSession ============================================================
@@ -257,7 +274,7 @@ sub MojoActionWrapper
 
   Essence::Logger->LogDebug('MojoSession:', $self->session());
 
-  return $self->NextHandler(@_);
+  return $self->NextHandler($self->MakeStash(), @_);
 }
 
 ###############################################################################
