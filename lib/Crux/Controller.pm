@@ -46,6 +46,14 @@ sub MakeStash
   return $self->PrepareStash($self->app()->MakeStash(@_));
 }
 
+sub GetParam
+{
+  my ($self, $s, $n, $d) = @_;
+  my @v = $s->Get($n) || $self->GetRouteParam($n, $d);
+  return @v if wantarray;
+  return $v[0];
+}
+
 # ==== MojoSession ============================================================
 # Just a wrapper around mojo's session handler with logging.
 
