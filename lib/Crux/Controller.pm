@@ -11,6 +11,7 @@ use Mojo::Base 'Mojolicious::Controller';
 use parent 'Essence::Logger::Mixin';
 
 use Essence::UUID;
+use Scalar::Util qw( blessed );
 use JSON;
 
 ###### METHODS ################################################################
@@ -144,7 +145,7 @@ sub KillMojoSession
 
 sub _RenderIndexDefaults
 {
-  my ($self, $status, $config) = @_;
+  my ($self, $s, $status, $config) = @_;
 
   $config->{'window_id'} //= uuid_hex();
   $self->LogDebug("Generated window_id: $config->{'window_id'}");
@@ -158,11 +159,13 @@ sub _RenderIndexDefaults
   }
 }
 
-# $self->RenderIndex($route);
-# $self->RenderIndex($route, $status, $config, $render_opts);
+# $self->RenderIndex($s, $route);
+# $self->RenderIndex($s, $route, $status, $config, $render_opts);
 sub RenderIndex
 {
   my $self = shift;
+  my $s = shift
+    if (blessed($_[0]) && $_[0]->isa('Crux::Stash'));
 
   my ($route, $status, $config, $render_opts);
   $route = shift unless ref($_[0]);
@@ -175,7 +178,7 @@ sub RenderIndex
   $status->{'route'} = $route
     if defined($route);
 
-  $self->_RenderIndexDefaults($status, $config);
+  $self->_RenderIndexDefaults($s, $status, $config);
 
   $self->LogDebug('Status: ', $status);
   $self->LogDebug('Config: ', $config);
