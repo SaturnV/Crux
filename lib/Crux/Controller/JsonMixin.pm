@@ -71,7 +71,7 @@ sub extract_error
 
 sub wrap_json
 {
-  my $self = shift;
+  my ($self, $s) = (shift, shift);
   my $ret;
 
   eval
@@ -84,7 +84,7 @@ sub wrap_json
           Crux::JsonSanitizer::remove_pwd($content_json));
     }
 
-    $ret = $self->NextHandler($content_json, @_);
+    $ret = $self->NextHandler($s, $content_json, @_);
   };
   if ($@)
   {
