@@ -30,6 +30,19 @@ sub _api_return
 
 # ---- Blueprint interface ----------------------------------------------------
 
+sub api_id_col
+{
+  my ($self) = @_;
+  my $class = ref($self) || $self;
+
+  my $metaclass = $class->get_metaclass();
+  my $id_col = $metaclass->GetConfig('db.key') // 'id';
+  die "$class: Composite ids not supported.\n"
+    if ref($id_col);
+
+  return $id_col;
+}
+
 sub _api_new { return shift->new(@_) }
 
 sub _ApiEdit { return shift->Edit(@_) }
@@ -106,10 +119,11 @@ sub api_load_by_id
       { ':lock' => $class->_api_action_to_lock($s, $action_or_opts) }
     unless ref($action_or_opts);
 
+  my $id_col = $class->api_id_col($s);
   eval
   {
     $obj = $class->_api_db_load($s,
-        { 'id' => $id },
+        { $id_col => $id },
         $action_or_opts);
   };
   if ($@)
@@ -133,14 +147,15 @@ sub api_object
 sub _api_verify_set_id
 {
   my ($class, $s, $id, $field) = @_;
-  $field //= 'id';
+  my $id_col = $class->api_id_col($s);
+  $field //= $id_col;
 
-  if (my $err = $class->verify('id' => $id))
+  if (my $err = $class->verify($id_col => $id))
   {
-    Essence::Logger->LogInfo("$class.id: $err");
+    Essence::Logger->LogInfo("$class.$id_col: $err");
     die { 'code' => 'bad_value', 'fld' => $field };
   }
-  $s->Set("crux.params.$field" => $id);
+  $s->Set('crux.params.id' => $id);
 
   return $id;
 }
@@ -322,8 +337,9 @@ sub _api_delete_permanent
   }
   else
   {
+    my $id_col = $class->api_id_col($s);
     $class->_api_db_delete($s,
-          { 'id' => scalar($s->Get('crux.params.id')) },
+          { $id_col => scalar($s->Get('crux.params.id')) },
           {});
   }
 
