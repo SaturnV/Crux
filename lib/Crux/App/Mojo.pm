@@ -67,8 +67,8 @@ sub AddRoute
 
   my $mojo_router = $self->routes();
 
-  my @common_params;
-  my ($mojo_method, $merged_params);
+  my @common_settings;
+  my ($mojo_method, $merged_settings);
   foreach my $r (@_)
   {
     if (ref($r) eq 'ARRAY')
@@ -82,20 +82,20 @@ sub AddRoute
         unless defined($r_action);
 
       $mojo_method = lc($r_method);
-      $merged_params = merge_deep_override(@common_params, @r_misc);
+      $merged_settings = merge_deep_override(@common_settings, @r_misc);
       # BUG $self->LogDebug(
       # Essence::Logger->LogDebug(
       #     "AddRoute $r_method $r_path -> ${namespace}::$r_action",
-      #     $merged_params);
+      #     $merged_settings);
       $mojo_router->$mojo_method($r_path)->to(
           'namespace' => $namespace,
           'action' => 'MojoActionWrapper',
           'crux.action' => $r_action,
-          'crux.route_params' => $merged_params);
+          'crux.route_settings' => $merged_settings);
     }
     elsif (ref($r) eq 'HASH')
     {
-      push(@common_params, $r);
+      push(@common_settings, $r);
     }
     else
     {

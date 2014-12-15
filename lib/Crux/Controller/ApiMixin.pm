@@ -17,7 +17,7 @@ use Carp;
 
 sub add_model_routes
 {
-  my ($self, $app, $route_base, $model, $params) =
+  my ($self, $app, $route_base, $model, $settings) =
       (shift, shift, shift, shift, shift);
   my $class = ref($self) || $self;
 
@@ -48,7 +48,7 @@ sub add_model_routes
 
   $app->AddRoute($class,
       { ':wrap' => [ 'api' ], ':model' => $model },
-      $params,
+      $settings,
       @rs)
     if @rs;
 }
@@ -75,7 +75,7 @@ sub _act_model
   my $model = $s->Get('crux.model');
   if (!$model)
   {
-    $model = $self->GetRouteParam(':model') or
+    $model = $self->GetRouteSetting(':model') or
       confess "No model";
     $s->Set('crux.model' => $model);
   }

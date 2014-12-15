@@ -47,10 +47,10 @@ sub MakeStash
   return $self->PrepareStash($self->app()->MakeStash(@_));
 }
 
-sub GetParam
+sub GetSetting
 {
   my ($self, $s, $n, $d) = @_;
-  my @v = $s->Get($n) || $self->GetRouteParam($n, $d);
+  my @v = $s->Get($n) || $self->GetRouteSetting($n, $d);
   return @v if wantarray;
   return $v[0];
 }
@@ -211,13 +211,13 @@ sub IsWebSocketRequest
 
 # ==== Wrappers / Handlers ====================================================
 
-sub GetRouteParam
+sub GetRouteSetting
 {
   # my ($self, $n, $d) = @_;
 
-  my $route_params = $_[0]->stash('crux.route_params');
-  return $route_params ?
-    (exists($route_params->{$_[1]}) ? $route_params->{$_[1]} : $_[2]) :
+  my $route_settings = $_[0]->stash('crux.route_settings');
+  return $route_settings ?
+    (exists($route_settings->{$_[1]}) ? $route_settings->{$_[1]} : $_[2]) :
     $_[2];
 }
 
@@ -255,9 +255,9 @@ sub _MakeHandlers
   my ($self) = @_;
   my @handlers;
 
-  if (my $route_params = $self->stash('crux.route_params'))
+  if (my $route_settings = $self->stash('crux.route_settings'))
   {
-    if (my $wrappers = $route_params->{':wrap'})
+    if (my $wrappers = $route_settings->{':wrap'})
     {
       push(@handlers,
           map { ref($_) ? $_ : "wrap_$_" }

@@ -58,7 +58,7 @@ sub ExtractSession
     $self->LogDebug("SessionId: <none>");
 
     $session = $self->CreateSession($s)
-      if $self->GetParam($s, 'auth.make_session');
+      if $self->GetSetting($s, 'auth.make_session');
   }
 
   return $session;
