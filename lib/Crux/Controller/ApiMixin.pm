@@ -21,17 +21,26 @@ sub add_model_routes
       (shift, shift, shift, shift, shift);
   my $class = ref($self) || $self;
 
+  my $id = $settings->{':id'};
+  if (!defined($id))
+  {
+    # CAVEAT: No $s
+    my @id_cols = $model->api_id_col();
+    $id = $id_cols[0] unless $#id_cols;
+  }
+  $id //= 'id';
+
   my $route_id;
   $route_base =~ s{//+}{/}g;
   if ($route_base =~ m{^/?\z})
   {
     $route_base = '/';
-    $route_id = '/:id';
+    $route_id = "/:$id";
   }
   else
   {
     $route_base =~ s{[^/]\K/+\z}{};
-    $route_id = "$route_base/:id";
+    $route_id = "$route_base/:$id";
   }
 
   # TODO make this more modular
@@ -64,13 +73,10 @@ sub wrap_api
 
 # ==== Actions ================================================================
 
-sub _act_model
+sub _model
 {
-  my ($self, $s, $action, @rest) = @_;
-
-  my $api_action = $action;
-  $api_action = "api_$api_action"
-    unless ($api_action =~ /^(?:[a-z][0-9A-Za-z]*)?api_/);
+  # my ($self, $s, $action) = @_;
+  my ($self, $s) = @_;
 
   my $model = $s->Get('crux.model');
   if (!$model)
@@ -80,6 +86,17 @@ sub _act_model
     $s->Set('crux.model' => $model);
   }
 
+  return $model;
+}
+
+sub _act_model
+{
+  my ($self, $s, $action, @rest) = @_;
+
+  my $model = $self->_model($s, $action);
+  my $api_action = $action;
+  $api_action = "api_$api_action"
+    unless ($api_action =~ /^(?:[a-z][0-9A-Za-z]*)?api_/);
   Essence::Logger->LogInfo("${model}->$api_action");
 
   return $model->$api_action($s, @rest);
@@ -94,10 +111,18 @@ sub act_list { return shift->_act_noid(shift, 'list', @_) }
 
 # ---- .../thing/:id ----------------------------------------------------------
 
+sub _model_id
+{
+  my ($self, $s, $action) = @_;
+  my $rps = $self->GetRouteParamHash();
+  my $model = $self->_model($s, $action);
+  return $model->api_extract_id($s, $rps, $action);
+}
+
 sub _act_id
 {
   my ($self, $s, $action, @rest) = @_;
-  return $self->_act_model($s, $action, scalar($self->param('id')), @rest);
+  return $self->_act_model($s, $action, $self->_model_id($s, $action), @rest);
 }
 
 sub act_read { return shift->_act_id(shift, 'read', @_) }

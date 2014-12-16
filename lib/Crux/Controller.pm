@@ -190,6 +190,29 @@ sub RenderIndex
   $self->render(%{$render_opts});
 }
 
+# ==== Parameters =============================================================
+
+sub GetRouteParam
+{
+  my ($self, $n) = @_;
+  my $match = $self->match();
+  my $stack = $match->stack()->[$match->current()];
+  return $stack->{$n};
+}
+
+sub GetRouteParamHash
+{
+  my ($self) = @_;
+  my $match = $self->match();
+  my $stack = $match->stack()->[$match->current()];
+  my $phs = $match->endpoint()->pattern()->placeholders();
+  my $ret = { map { ($_ => $stack->{$_}) } @{$phs} };
+  return %{$ret} if wantarray;
+  return $ret;
+}
+
+# TODO UrlParam, FormParam
+
 # ==== Misc ===================================================================
 
 # http://stackoverflow.com/questions/49547/making-sure-a-web-page-is-not-cached-across-all-browsers

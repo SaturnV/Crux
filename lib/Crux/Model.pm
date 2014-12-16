@@ -30,17 +30,27 @@ sub _api_return
 
 # ---- Blueprint interface ----------------------------------------------------
 
-sub api_id_col
+sub _api_id_cols
 {
   my ($self) = @_;
   my $class = ref($self) || $self;
-
   my $metaclass = $class->get_metaclass();
-  my $id_col = $metaclass->GetConfig('db.key') // 'id';
-  die "$class: Composite ids not supported.\n"
-    if ref($id_col);
+  my $key = $metaclass->GetConfig('db.key') // 'id';
+  return ref($key) ? @{$key} : ($key);
+}
 
-  return $id_col;
+sub api_id_col
+{
+  my ($self, $s) = @_;
+  my $class = ref($self) || $self;
+  my @id_cols = $self->_api_id_cols($s);
+
+  die "$class: No id" unless @id_cols;
+  die "$class: Composite ids not supported.\n"
+    if ((scalar(@id_cols) > 1) && !wantarray);
+
+  return @id_cols if wantarray;
+  return $id_cols[0];
 }
 
 sub _api_new { return shift->new(@_) }
@@ -53,6 +63,27 @@ sub _api_edit
 }
 
 # DB
+
+sub _api_id2where
+{
+  my ($class, $s, $id, $op) = @_;
+  my $where;
+
+  if (ref($id))
+  {
+    my @id_cols = $class->api_id_col($s);
+    # $where = {};
+    # @{$where}{@id_cols} = @{$id}{@id_cols};
+    $where = { map { ($_ => $id->{$_}) } @id_cols };
+  }
+  else
+  {
+    my $id_col = $class->api_id_col($s);
+    $where = { $id_col => $id };
+  }
+
+  return $where;
+}
 
 # TODO die \'not_found'
 sub _api_db_load { return shift->db_load(@_) }
@@ -100,6 +131,71 @@ sub _ApiDbDelete
 
 # ---- Helpers ----------------------------------------------------------------
 
+sub api_extract_id
+{
+  # my ($class, $s, $params, $action) = @_;
+  my ($class, $s, $params) = @_;
+  my @id_cols = $class->api_id_col($s);
+  return $#id_cols ?
+      { map { ($_ => $params->{$_}) } @id_cols } :
+      $params->{$id_cols[0]};
+}
+
+sub api_verify_id
+{
+  my ($class, $s, $id) = @_;
+
+  if (ref($id))
+  {
+    my $err;
+    my @id_cols = $class->api_id_col($s);
+    my %id_cols = ( map { ($_ => 1) } @id_cols );
+    foreach my $k (keys(%{$id}))
+    {
+      if (!$id_cols{$k})
+      {
+        Essence::Logger->LogInfo("$class.$k: Bad key component");
+        die { 'code' => 'bad_value', 'fld' => $k };
+      }
+      if ($err = $class->verify($k => $id->{$k}))
+      {
+        Essence::Logger->LogInfo("$class.$k: $err");
+        die { 'code' => 'bad_value', 'fld' => $k };
+      }
+    }
+
+    my @missing = grep { !exists($id->{$_}) } @id_cols;
+    if (@missing)
+    {
+      Essence::Logger->LogInfo(
+          "$class: Missing key component: " .
+          join(', ', @missing));
+      die [ map { { 'code' => 'missing_param', 'fld' => $_ } } @missing ];
+    }
+
+    $id = $id->{$id_cols[0]} unless $#id_cols;
+  }
+  else
+  {
+    my $id_col = $class->api_id_col($s);
+    if (my $err = $class->verify($id_col => $id))
+    {
+      Essence::Logger->LogInfo("$class.$id_col: $err");
+      die { 'code' => 'bad_value', 'fld' => $id_col };
+    }
+  }
+
+  return $id;
+}
+
+sub _api_verify_set_id
+{
+  my ($class, $s, $id) = @_;
+  $id = $class->api_verify_id($s, $id);
+  $s->Set('crux.params.id' => $id);
+  return $id;
+}
+
 sub _api_action_to_lock
 {
   my ($class, $s, $action) = @_;
@@ -119,13 +215,8 @@ sub api_load_by_id
       { ':lock' => $class->_api_action_to_lock($s, $action_or_opts) }
     unless ref($action_or_opts);
 
-  my $id_col = $class->api_id_col($s);
-  eval
-  {
-    $obj = $class->_api_db_load($s,
-        { $id_col => $id },
-        $action_or_opts);
-  };
+  my $where = $class->_api_id2where($s, $id, 'load');
+  $obj = eval { $class->_api_db_load($s, $where, $action_or_opts) };
   if ($@)
   {
     die $@ if (ref($@) && !Scalar::Util::blessed($@));
@@ -142,22 +233,6 @@ sub api_object
   my ($class, $s) = (shift, @_);
   return $s->Get('crux.obj') //
     $s->Set('crux.obj' => $class->api_load_by_id(@_));
-}
-
-sub _api_verify_set_id
-{
-  my ($class, $s, $id, $field) = @_;
-  my $id_col = $class->api_id_col($s);
-  $field //= $id_col;
-
-  if (my $err = $class->verify($id_col => $id))
-  {
-    Essence::Logger->LogInfo("$class.$id_col: $err");
-    die { 'code' => 'bad_value', 'fld' => $field };
-  }
-  $s->Set('crux.params.id' => $id);
-
-  return $id;
 }
 
 # ---- Verify -----------------------------------------------------------------
@@ -337,9 +412,9 @@ sub _api_delete_permanent
   }
   else
   {
-    my $id_col = $class->api_id_col($s);
     $class->_api_db_delete($s,
-          { $id_col => scalar($s->Get('crux.params.id')) },
+          $class->_api_id2where(
+              $s, scalar($s->Get('crux.params.id')), 'delete'),
           {});
   }
 
