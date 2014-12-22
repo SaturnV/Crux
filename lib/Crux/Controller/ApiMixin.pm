@@ -99,35 +99,20 @@ sub _act_model
     unless ($api_action =~ /^(?:[a-z][0-9A-Za-z]*)?api_/);
   Essence::Logger->LogInfo("${model}->$api_action");
 
-  return $model->$api_action($s, @rest);
+  my $route_params = $self->GetRouteParamHash();
+  my $query_params = $self->GetQueryParamHash();
+
+  return $model->$api_action($s, $route_params, $query_params, @rest);
 }
 
-# ---- .../thing --------------------------------------------------------------
+# .../thing
+sub act_create { return shift->_act_model(shift, 'create', @_) }
+sub act_list { return shift->_act_model(shift, 'list', @_) }
 
-sub _act_noid { shift->_act_model(@_) }
-
-sub act_create { return shift->_act_noid(shift, 'create', @_) }
-sub act_list { return shift->_act_noid(shift, 'list', @_) }
-
-# ---- .../thing/:id ----------------------------------------------------------
-
-sub _model_id
-{
-  my ($self, $s, $action) = @_;
-  my $rps = $self->GetRouteParamHash();
-  my $model = $self->_model($s, $action);
-  return $model->api_extract_id($s, $rps, $action);
-}
-
-sub _act_id
-{
-  my ($self, $s, $action, @rest) = @_;
-  return $self->_act_model($s, $action, $self->_model_id($s, $action), @rest);
-}
-
-sub act_read { return shift->_act_id(shift, 'read', @_) }
-sub act_update { return shift->_act_id(shift, 'update', @_) }
-sub act_delete { return shift->_act_id(shift, 'delete', @_) }
+# .../thing/:id
+sub act_read { return shift->_act_model(shift, 'read', @_) }
+sub act_update { return shift->_act_model(shift, 'update', @_) }
+sub act_delete { return shift->_act_model(shift, 'delete', @_) }
 
 ###############################################################################
 

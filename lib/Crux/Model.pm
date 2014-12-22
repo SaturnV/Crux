@@ -58,15 +58,16 @@ sub _api_new { return shift->new(@_) }
 sub _ApiEdit { return shift->Edit(@_) }
 sub _api_edit
 {
-  my ($class, $s, $obj) = (shift, shift, shift);
-  return $obj->_ApiEdit($s, @_);
+  my ($class, $s, $obj, @rest) = @_;
+  return $obj->_ApiEdit($s, @rest);
 }
 
 # DB
 
 sub _api_id2where
 {
-  my ($class, $s, $id, $op) = @_;
+  # my ($class, $s, $action, $id) = @_;
+  my ($class, $s, undef, $id) = @_;
   my $where;
 
   if (ref($id))
@@ -90,22 +91,22 @@ sub _api_db_load { return shift->db_load(@_) }
 
 sub _api_db_insert
 {
-  my ($class, $s, $obj) = (shift, shift, shift);
-  return $obj->_ApiDbInsert($s, @_);
+  my ($class, $s, $obj, @rest) = @_;
+  return $obj->_ApiDbInsert($s, @rest);
 }
 
 sub _api_db_update
 {
-  my ($class, $s, $obj) = (shift, shift, shift);
-  return $obj->_ApiDbUpdate($s, @_);
+  my ($class, $s, $obj, @rest) = @_;
+  return $obj->_ApiDbUpdate($s, @rest);
 }
 
 sub _api_db_delete
 {
-  my ($class, $s, $obj) = (shift, shift, shift);
+  my ($class, $s, $obj, @rest) = @_;
   return Scalar::Util::blessed($obj) ?
-      $obj->_ApiDbDelete($s, @_) :
-      $class->db_delete($s, $obj, @_);
+      $obj->_ApiDbDelete($s, @rest) :
+      $class->db_delete($s, $obj, @rest);
 }
 
 sub _ApiDbInsert
@@ -133,12 +134,12 @@ sub _ApiDbDelete
 
 sub api_extract_id
 {
-  # my ($class, $s, $params, $action) = @_;
-  my ($class, $s, $params) = @_;
+  # my ($class, $s, $action, $route_params, $query_param, $post_data) = @_;
+  my ($class, $s, undef, $route_params) = @_;
   my @id_cols = $class->api_id_col($s);
   return $#id_cols ?
-      { map { ($_ => $params->{$_}) } @id_cols } :
-      $params->{$id_cols[0]};
+      { map { ($_ => $route_params->{$_}) } @id_cols } :
+      $route_params->{$id_cols[0]};
 }
 
 sub api_verify_id
@@ -188,12 +189,12 @@ sub api_verify_id
   return $id;
 }
 
-sub _api_verify_set_id
+sub api_extract_verify_id
 {
-  my ($class, $s, $id) = @_;
-  $id = $class->api_verify_id($s, $id);
-  $s->Set('crux.params.id' => $id);
-  return $id;
+  # my ($class, $s, $action, $route_params, $query_param, $post_data) = @_;
+  my ($class, $s, @rest) = @_;
+  return $class->api_verify_id($s,
+      $class->api_extract_id($s, @rest));
 }
 
 sub _api_action_to_lock
@@ -205,18 +206,18 @@ sub _api_action_to_lock
 
 sub api_load_by_id
 {
-  my ($class, $s, $id, $action_or_opts) = @_;
+  my ($class, $s, $id, $action, $opts) = @_;
   my $obj;
 
-  $id //= $s->Get('crux.params.id') or
+  $id //= $s->Get('crux.id') or
     croak "Trying to load object without id";
 
-  $action_or_opts //=
-      { ':lock' => $class->_api_action_to_lock($s, $action_or_opts) }
-    unless ref($action_or_opts);
+  $opts //=
+      { ':lock' => $class->_api_action_to_lock($s, $action) }
+    unless $opts;
 
-  my $where = $class->_api_id2where($s, $id, 'load');
-  $obj = eval { $class->_api_db_load($s, $where, $action_or_opts) };
+  my $where = $class->_api_id2where($s, 'load', $id);
+  $obj = eval { $class->_api_db_load($s, $where, $opts) };
   if ($@)
   {
     die $@ if (ref($@) && !Scalar::Util::blessed($@));
@@ -229,25 +230,26 @@ sub api_load_by_id
 
 sub api_object
 {
-  # my ($class, $s, $id, $action_or_opts) = @_;
-  my ($class, $s) = (shift, @_);
+  # my ($class, $s, $id, $action, $opts) = @_;
+  my ($class, $s, @rest) = @_;
   return $s->Get('crux.obj') //
-    $s->Set('crux.obj' => $class->api_load_by_id(@_));
+    $s->Set('crux.obj' => $class->api_load_by_id($s, @rest));
 }
 
 # ---- Verify -----------------------------------------------------------------
 
 sub _api_verify_data
 {
-  # my ($class, $s, $op, $data) = @_;
-  my ($class, $s, $op, $data) = (shift, shift, shift, @_);
+  # my ($class, $s, $action, $data, ...) = @_;
+  my ($class, $s, $action, @rest) = @_;
+  my ($data) = @rest;
 
   die { 'code' => 'bad_value' }
     unless (ref($data) eq 'HASH');
 
   my $metaattr;
   my $metaclass = $class->get_metaclass();
-  my $re = qr/\b\Q$op\E\b/;
+  my $re = qr/\b\Q$action\E\b/;
 
   foreach my $attr_name (keys(%{$data}))
   {
@@ -258,13 +260,13 @@ sub _api_verify_data
               (($metaattr->GetMeta('api') // '') =~ $re));
   }
 
-  return @_ if wantarray;
+  return @rest if wantarray;
   return $data;
 }
 
 sub _ApiVerify
 {
-  # my ($obj, $s, $op) = @_;
+  # my ($obj, $s, $action) = @_;
   return 1;
 }
 
@@ -272,7 +274,7 @@ sub _ApiVerify
 
 sub _api_tweak_data
 {
-  # my ($class, $s, $op, $data) = @_;
+  # my ($class, $s, $action, $data, ...) = @_;
   return $_[3] unless wantarray;
   shift; shift; shift;
   return @_;
@@ -280,13 +282,22 @@ sub _api_tweak_data
 
 sub _api_tweak_object
 {
-  # my ($class, $s, $op, $obj) = @_;
+  # my ($class, $s, $action, $obj) = @_;
   return $_[3] unless wantarray;
   shift; shift; shift;
   return @_;
 }
 
 # ---- Create -----------------------------------------------------------------
+
+sub _api_create_input
+{
+  # my ($class, $s, $route_params, $query_param, $post_data) = @_;
+  my $data = { %{$_[4]} };
+  return $data unless wantarray;
+  shift; shift;
+  return ($data, @_);
+}
 
 # All systems GO
 sub _api_create_
@@ -302,19 +313,21 @@ sub _api_create_
 # Returns object
 sub api_create_
 {
-  # my ($class, $s, $data) = @_;
-  my ($class, $s) = (shift, shift);
+  # my ($class, $s, $route_params, $query_param, $post_data) = @_;
+  my ($class, $s, @params) = @_;
+  my $action = 'create';
   return $class->_api_create_($s,
       $class->_api_tweak_data($s, 'create',
-          $class->_api_verify_data($s, 'create', @_)));
+          $class->_api_verify_data($s, 'create',
+              $class->_api_create_input($s, @params))));
 }
 
 # Returns JSON
 sub api_create
 {
-  # my ($class, $s, $data) = @_;
-  my ($class, $s) = (shift, shift);
-  return $class->_api_return($s, $class->api_create_($s, @_));
+  # my ($class, $s, $route_params, $query_param, $post_data) = @_;
+  my ($class, $s, @params) = @_;
+  return $class->_api_return($s, $class->api_create_($s, @params));
 }
 
 # ---- List -------------------------------------------------------------------
@@ -326,37 +339,48 @@ sub api_create
 # All systems GO
 sub _api_read_
 {
-  # my ($class, $s) = @_;
-  return shift->api_object(shift);
+  # my ($class, $s, $id, $route_params, $query_param) = @_;
+  my ($class, $s, $id) = @_;
+  return $class->api_object($s, $id, 'read');
 }
 
 # Returns object
 sub api_read_
 {
-  # my ($class, $s, $id) = @_;
-  my ($class, $s, $id) = (shift, shift, shift);
-  $class->_api_verify_set_id($s, $id);
-  return $class->_api_read_($s, @_);
+  # my ($class, $s, $route_params, $query_param) = @_;
+  my ($class, $s, @params) = @_;
+  return $class->_api_read_($s,
+      $class->api_extract_verify_id($s, 'read', @params),
+      @params);
 }
 
 # Returns JSON
 sub api_read
 {
-  # my ($class, $s, $id, $data) = @_;
-  my ($class, $s) = (shift, shift);
-  return $class->_api_return($s, $class->api_read_($s, @_));
+  # my ($class, $s, $route_params, $query_param) = @_;
+  my ($class, $s, @params) = @_;
+  return $class->_api_return($s, $class->api_read_($s, @params));
 }
 
 # ---- Update -----------------------------------------------------------------
 
+sub _api_update_input
+{
+  # my ($class, $s, $route_params, $query_param, $post_data) = @_;
+  my $data = { %{$_[4]} };
+  return $data unless wantarray;
+  shift; shift;
+  return ($data, @_);
+}
+
 # All systems GO
 sub _api_update_
 {
-  # my ($class, $s, $data) = @_;
-  my ($class, $s) = (shift, shift);
-  my $obj = $class->api_object($s);
+  # my ($class, $s, $id, $data, $route_params, $query_param, $post_data) = @_;
+  my ($class, $s, $id, $data) = @_;
+  my $obj = $class->api_object($s, $id, 'update');
   $obj = $class->_api_tweak_object($s, 'update',
-      $class->_api_edit($s, $obj, @_));
+      $class->_api_edit($s, $obj, $data));
   $obj->_ApiVerify($s, 'update');
   return $class->_api_db_update($s, $obj);
 }
@@ -364,46 +388,36 @@ sub _api_update_
 # Returns object
 sub api_update_
 {
-  # my ($class, $s, $id, $data) = @_;
-  my ($class, $s, $id) = (shift, shift, shift);
-  $class->_api_verify_set_id($s, $id);
+  # my ($class, $s, $route_params, $query_param, $post_data) = @_;
+  my ($class, $s, @params) = @_;
   return $class->_api_update_($s,
+      $class->api_extract_verify_id($s, 'update', @params),
       $class->_api_tweak_data($s, 'update',
-          $class->_api_verify_data($s, 'update', @_)));
+          $class->_api_verify_data($s, 'update',
+              $class->_api_update_input($s, @params))));
 }
 
 # Returns JSON
 sub api_update
 {
-  # my ($class, $s, $id, $data) = @_;
-  my ($class, $s) = (shift, shift);
-  return $class->_api_return($s, $class->api_update_($s, @_));
+  # my ($class, $s, $route_params, $query_param, $post_data) = @_;
+  my ($class, $s, @rest) = @_;
+  return $class->_api_return($s, $class->api_update_($s, @rest));
 }
 
 # ---- Delete -----------------------------------------------------------------
 
-# All systems GO
-sub _api_delete_
-{
-  # my ($class, $s) = @_;
-  my $class = shift;
-  my $metaclass = $class->get_metaclass();
-  return $metaclass->GetAttribute('deleted') ?
-      $class->_api_delete_edit(@_) :
-      $class->_api_delete_permanent(@_);
-}
-
 sub _api_delete_edit
 {
-  my ($class, $s) = @_;
-  my $obj = $class->api_object($s);
+  my ($class, $s, $id) = @_;
+  my $obj = $class->api_object($s, $id, 'delete');
   $obj = $class->_api_edit($s, $obj, { 'deleted' => 1 });
   return $class->_api_db_update($s, $obj);
 }
 
 sub _api_delete_permanent
 {
-  my ($class, $s) = @_;
+  my ($class, $s, $id) = @_;
 
   my $obj = $s->Get('crux.obj');
   if ($obj)
@@ -413,29 +427,40 @@ sub _api_delete_permanent
   else
   {
     $class->_api_db_delete($s,
-          $class->_api_id2where(
-              $s, scalar($s->Get('crux.params.id')), 'delete'),
-          {});
+        $class->_api_id2where($s, 'delete', $id),
+        {});
   }
 
   return;
 }
 
+# All systems GO
+sub _api_delete_
+{
+  # my ($class, $s, $id, $route_params, $query_param, $post_data) = @_;
+  my $class = shift;
+  my $metaclass = $class->get_metaclass();
+  return $metaclass->GetAttribute('deleted') ?
+      $class->_api_delete_edit(@_) :
+      $class->_api_delete_permanent(@_);
+}
+
 # Returns object
 sub api_delete_
 {
-  # my ($class, $s, $id) = @_;
-  my ($class, $s, $id) = (shift, shift, shift);
-  $class->_api_verify_set_id($s, $id);
-  return $class->_api_delete_($s, @_);
+  # my ($class, $s, $route_params, $query_param, $post_data) = @_;
+  my ($class, $s, @params) = @_;
+  return $class->_api_delete_($s,
+      $class->api_extract_verify_id($s, 'read', @params),
+      @params);
 }
 
 # Returns JSON
 sub api_delete
 {
-  # my ($class, $s, $id) = @_;
-  my ($class, $s) = (shift, shift);
-  return $class->_api_return($s, $class->api_delete_($s, @_));
+  # my ($class, $s, $route_params, $query_param, $post_data) = @_;
+  my ($class, $s, @params) = @_;
+  return $class->_api_return($s, $class->api_delete_($s, @params));
 }
 
 # ---- Misc -------------------------------------------------------------------
@@ -452,7 +477,7 @@ sub api_call_clean
   my $s_ = ref($s)->new(
       ':base' => $s,
       @patch,
-      # 'crux.params.id' => undef,
+      # 'crux.id' => undef,
       'crux.obj' => undef);
 
   return $self->$method($s_, @rest);

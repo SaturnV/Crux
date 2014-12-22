@@ -197,6 +197,8 @@ sub GetRouteParam
   my ($self, $n) = @_;
   my $match = $self->match();
   my $stack = $match->stack()->[$match->current()];
+  return exists($stack->{$n}) ? ($stack->{$n}) : ()
+    if wantarray;
   return $stack->{$n};
 }
 
@@ -211,7 +213,13 @@ sub GetRouteParamHash
   return $ret;
 }
 
-# TODO UrlParam, FormParam
+# TODO
+sub GetQueryParam { return }
+sub GetQueryParamHash
+{
+  return () if wantarray;
+  return {}
+}
 
 # ==== Misc ===================================================================
 
