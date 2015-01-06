@@ -33,6 +33,14 @@ sub api_load_by_id
           } @{$class->get_metaclass()->GetConfig(':components')});
 }
 
+sub _ApiDbUpdate
+{
+  my $obj = shift;
+  my ($s) = @_;
+  $_->_ApiDbUpdate(@_) foreach ($obj->GetComponents($s));
+  return $obj;
+}
+
 ###############################################################################
 
 1
