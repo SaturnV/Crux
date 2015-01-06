@@ -292,8 +292,15 @@ sub _api_tweak_object
 
 sub _api_create_input
 {
-  # my ($class, $s, $route_params, $query_param, $post_data) = @_;
-  my $data = { %{$_[4]} };
+  my ($class, $s, $route_params, $query_param, $post_data) = @_;
+  my $data = { %{$post_data} };
+
+  foreach ($class->api_id_col($s))
+  {
+    $data->{$_} = $route_params->{$_}
+      if exists($route_params->{$_});
+  }
+
   return $data unless wantarray;
   shift; shift;
   return ($data, @_);
