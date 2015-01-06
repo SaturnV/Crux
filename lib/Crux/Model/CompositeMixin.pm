@@ -33,6 +33,36 @@ sub api_load_by_id
           } @{$class->get_metaclass()->GetConfig(':components')});
 }
 
+sub _ApiDbInsert
+{
+  my $obj = shift;
+  my ($s) = @_;
+
+  my @cs = $obj->GetComponents($s);
+  my ($c, $v, $serials, @serials);
+  while (@cs)
+  {
+    $c = shift(@cs)->_ApiDbInsert(@_);
+
+    # Merge forward serials
+    last unless @cs; # shortcut
+    $serials = ref($c)->get_metaclass()->GetConfig('db.serials');
+    if (defined($serials))
+    {
+      @serials = ref($serials) ? @{$serials} : ($serials);
+      foreach my $n (@serials)
+      {
+        if (defined($v = $c->Get($s, $n)))
+        {
+          $_->Set($s, $n, $v) foreach @cs;
+        }
+      }
+    }
+  }
+
+  return $obj;
+}
+
 sub _ApiDbUpdate
 {
   my $obj = shift;
