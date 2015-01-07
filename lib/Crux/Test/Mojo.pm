@@ -17,14 +17,15 @@ use JSON;
 
 # ==== RenderIndex + Status / Config ==========================================
 
-sub GetContent { return $_[0]->tx()->res()->text() }
+sub GetContentText { return $_[0]->tx()->res()->text() }
+sub GetContentJson { return shift->tx()->res()->json(@_) }
 
 sub _GetJsonText
 {
   my ($self, $what) = @_;
   my $json;
 
-  my $content = $self->GetContent();
+  my $content = $self->GetContentText();
   ($json) = extract_bracketed($content, "{[\"']}")
     if (defined($content) &&
         ($content =~ /^ \s* var \s+ \Q$what\E \s* = \s*/gmx));
@@ -45,6 +46,15 @@ sub GetConfig { return $_[0]->_GetJson('ntConfig') }
 
 # ==== API ====================================================================
 
+sub GetApiResponseContent
+{
+  my ($self, $what) = @_;
+  return defined($what) ?
+      $self->GetContentJson('/content' .
+          (($what =~ m{^/}) ? $what : "/$what")) :
+      $self->GetContentJson('/content');
+}
+
 sub api_is_success
 {
   my ($self, $desc) = @_;
@@ -54,12 +64,28 @@ sub api_is_success
        ->json_is('/success', 'great', "$desc success");
 }
 
+sub api_is_error
+{
+  my ($self, $desc) = @_;
+  $desc //= 'api_is_error';
+  $self->status_is(200, "$desc status")
+       ->content_type_is('application/json', "$desc content-type")
+       ->json_has('/error', "$desc error");
+}
+
+sub api_content_deeply
+{
+  my ($self, $data, $desc) = @_;
+  $desc //= 'api_content_deeply';
+  my $api_response_content = $self->GetApiResponseContent();
+  cmp_deeply($api_response_content, $data, "$desc cmp");
+  return $self;
+}
+
 sub api_content_superhash
 {
   my ($self, $data, $desc) = @_;
-  my $api_response_content = $self->tx()->res()->json('/content');
-  cmp_deeply($api_response_content, superhashof($data), "$desc cmp");
-  return $self;
+  return $self->api_content_deeply(superhashof($data), $desc);
 }
 
 sub api_put_get
