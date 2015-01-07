@@ -46,7 +46,7 @@ sub _ApiDbInsert
 
     # Merge forward serials
     last unless @cs; # shortcut
-    $serials = ref($c)->get_metaclass()->GetConfig('db.serials');
+    $serials = ref($c)->get_metaclass()->GetConfig('db.serial');
     if (defined($serials))
     {
       @serials = ref($serials) ? @{$serials} : ($serials);
