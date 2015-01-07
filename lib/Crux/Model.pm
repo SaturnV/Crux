@@ -458,7 +458,7 @@ sub api_delete_
   # my ($class, $s, $route_params, $query_param, $post_data) = @_;
   my ($class, $s, @params) = @_;
   return $class->_api_delete_($s,
-      $class->api_extract_verify_id($s, 'read', @params),
+      $class->api_extract_verify_id($s, 'delete', @params),
       @params);
 }
 
