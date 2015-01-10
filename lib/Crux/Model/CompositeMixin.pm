@@ -16,7 +16,7 @@ use Essence::Merge;
 sub _api_id_cols
 {
   my ($class, @rest) = @_;
-  return @{Essence::Merge::merge_arrays(
+  return @{Essence::Merge::merge_arrays_keep_order(
       map { [$_->_api_id_cols(@rest)] }
           @{$class->get_metaclass()->GetConfig(':components')})};
 }
