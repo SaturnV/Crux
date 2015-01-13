@@ -212,9 +212,7 @@ sub api_load_by_id
   $id //= $s->Get('crux.id') or
     croak "Trying to load object ($class) without id";
 
-  $opts //=
-      { ':lock' => $class->_api_action_to_lock($s, $action) }
-    unless $opts;
+  $opts //= { ':lock' => $class->_api_action_to_lock($s, $action) };
 
   my $where = $class->_api_id2where($s, 'load', $id);
   $obj = eval { $class->_api_db_load($s, $where, $opts) };
