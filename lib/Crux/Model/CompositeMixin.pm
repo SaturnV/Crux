@@ -23,13 +23,11 @@ sub _api_id_cols
 
 sub api_load_by_id
 {
-  # my ($class, $s, $id, $action, $opts) = @_;
-  my ($class, $s, $id, $action, @rest) = @_;
+  my ($class, $s, $id, $action, $opts) = @_;
   return $class->assemble($s,
       map {
-            $_->api_load_by_id($s,
-                $_->api_extract_verify_id($s, $action, $id),
-                $action, @rest)
+            $_->api_call_clean($s, 'api_extract_verify_load',
+                $action, $opts, $id);
           } @{$class->get_metaclass()->GetConfig(':components')});
 }
 

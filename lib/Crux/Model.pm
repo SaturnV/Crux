@@ -210,7 +210,7 @@ sub api_load_by_id
   my $obj;
 
   $id //= $s->Get('crux.id') or
-    croak "Trying to load object without id";
+    croak "Trying to load object ($class) without id";
 
   $opts //=
       { ':lock' => $class->_api_action_to_lock($s, $action) }
@@ -226,6 +226,19 @@ sub api_load_by_id
   }
 
   return $obj;
+}
+
+sub api_extract_verify_load
+{
+  # my ($class, $s, $action, $opts,
+  #     $route_params, $query_param, $post_data) = @_;
+  my ($class, $s, $action, $opts, @rest) = @_;
+
+  # $classi->api_load_by_id($s, $id, $action, $opts);
+  # $class->api_extract_verify_id($s, $action, ...);
+  return $class->api_load_by_id($s,
+      $class->api_extract_verify_id($s, $action, @rest),
+      $action, $opts);
 }
 
 sub api_object
