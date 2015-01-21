@@ -7,8 +7,6 @@ package Crux::Model::CompositeMixin;
 
 use Essence::Strict;
 
-use parent qw( Blueprint::Composite );
-
 use Essence::Merge;
 
 ###### METHODS ################################################################
@@ -17,8 +15,7 @@ sub _api_id_cols
 {
   my ($class, @rest) = @_;
   return @{Essence::Merge::merge_arrays_keep_order(
-      map { [$_->_api_id_cols(@rest)] }
-          @{$class->get_metaclass()->GetConfig(':components')})};
+      map { [$_->_api_id_cols(@rest)] } $class->get_components())};
 }
 
 sub api_load_by_id
@@ -28,7 +25,7 @@ sub api_load_by_id
       map {
             $_->api_call_clean($s, 'api_extract_verify_load',
                 $action, $opts, $id);
-          } @{$class->get_metaclass()->GetConfig(':components')});
+          } $class->get_components());
 }
 
 sub _ApiDbInsert
