@@ -89,8 +89,9 @@ sub _model
   return $model;
 }
 
-sub _act_model
+sub _act_model_
 {
+  # my ($self, $s, $action, $route_params, $query_params, @rest) = @_;
   my ($self, $s, $action, @rest) = @_;
 
   my $model = $self->_model($s, $action);
@@ -99,10 +100,16 @@ sub _act_model
     unless ($api_action =~ /^(?:[a-z][0-9A-Za-z]*)?api_/);
   Essence::Logger->LogInfo("${model}->$api_action");
 
+  # $model->$api_action($s, $route_params, $query_params, $post_json)
+  return $model->$api_action($s, @rest);
+}
+
+sub _act_model
+{
+  my ($self, $s, $action, @rest) = @_;
   my $route_params = $self->GetRouteParamHash();
   my $query_params = $self->GetQueryParamHash();
-
-  return $model->$api_action($s, $route_params, $query_params, @rest);
+  return $self->_act_model_($s, $action, $route_params, $query_params, @rest);
 }
 
 # .../thing
