@@ -214,11 +214,15 @@ sub GetRouteParamHash
 }
 
 # TODO
-sub GetQueryParam { return }
+sub GetQueryParam
+{
+  return $_[0]->req()->query_params()->to_hash()->{$_[1]};
+}
 sub GetQueryParamHash
 {
-  return () if wantarray;
-  return {}
+  my $ret = $_[0]->req()->query_params()->to_hash();
+  return %{$ret} if wantarray;
+  return $ret;
 }
 
 # ==== Misc ===================================================================
