@@ -15,6 +15,27 @@ use JSON;
 
 ###### CONFIG #################################################################
 
+sub __deeply
+{
+  my $ret = $_[0];
+
+  if (ref($ret) eq 'ARRAY')
+  {
+    $ret = bag(map { __deeply($_) } @{$ret});
+  }
+  elsif (ref($ret) eq 'HASH')
+  {
+    my $deep = {};
+    $deep->{$_} = __deeply($ret->{$_})
+      foreach (keys(%{$ret}));
+    $ret = superhashof($deep);
+  }
+
+  return $ret;
+}
+
+sub Deeply { return __deeply($_[1]) }
+
 # ==== RenderIndex + Status / Config ==========================================
 
 sub GetContentText { return $_[0]->tx()->res()->text() }
@@ -73,10 +94,10 @@ sub api_is_error
        ->json_has('/error', "$desc error");
 }
 
-sub api_content_deeply
+sub api_content_cmp
 {
   my ($self, $data, $desc) = @_;
-  $desc //= 'api_content_deeply';
+  $desc //= 'api_content_cmp';
   my $api_response_content = $self->GetApiResponseContent();
   cmp_deeply($api_response_content, $data, "$desc cmp");
   return $self;
@@ -85,7 +106,19 @@ sub api_content_deeply
 sub api_content_superhash
 {
   my ($self, $data, $desc) = @_;
-  return $self->api_content_deeply(superhashof($data), $desc);
+  return $self->api_content_cmp(superhashof($data), $desc);
+}
+
+sub api_content_bag
+{
+  my ($self, $data, $desc) = @_;
+  return $self->api_content_cmp(bag($data), $desc);
+}
+
+sub api_content_deeply
+{
+  my ($self, $data, $desc) = @_;
+  return $self->api_content_cmp($self->Deeply($data), $desc);
 }
 
 sub api_put_get
