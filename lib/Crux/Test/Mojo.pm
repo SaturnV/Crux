@@ -11,6 +11,7 @@ use parent 'Test::Mojo';
 
 use Test::Deep;
 use Text::Balanced qw( extract_bracketed );
+use Essence::Merge qw( merge_hashes );
 use JSON;
 
 ###### CONFIG #################################################################
@@ -123,14 +124,20 @@ sub api_content_deeply
 
 sub api_put_get
 {
-  my ($self, $url, $data, $desc) = @_;
+  my ($self, $url, $data, @cmp_desc) = @_;
+  my $desc = pop(@cmp_desc);
+
+  my $cmp = @cmp_desc ?
+      merge_hashes($data, @cmp_desc) :
+      $data;
+
   $desc //= 'put_get';
   $self->put_ok($url, 'json' => $data)
       ->api_is_success("$desc PUT success")
-      ->api_content_superhash($data, "$desc PUT");
+      ->api_content_deeply($data, "$desc PUT");
   $self->get_ok($url)
       ->api_is_success("$desc GET success")
-      ->api_content_superhash($data, "$desc GET");
+      ->api_content_deeply($cmp, "$desc GET");
 }
 
 ###############################################################################
