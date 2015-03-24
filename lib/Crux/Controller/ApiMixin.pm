@@ -77,15 +77,8 @@ sub _model
 {
   # my ($self, $s, $action) = @_;
   my ($self, $s) = @_;
-
-  my $model = $s->Get('crux.model');
-  if (!$model)
-  {
-    $model = $self->GetRouteSetting(':model') or
-      confess "No model";
-    $s->Set('crux.model' => $model);
-  }
-
+  my $model = $self->GetRouteSetting(':model');
+  confess "No model" unless defined($model);
   return $model;
 }
 
