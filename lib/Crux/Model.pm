@@ -200,8 +200,8 @@ sub api_extract_verify_id
 sub _api_action_to_lock
 {
   my ($class, $s, $action) = @_;
-  $action //= $s->Get('crux.action') // '';
-  return ($action =~ /^(?:read|list)(?:_|\z)/) ? 'r' : 'w';
+  return (defined($action) && ($action =~ /^(?:read|list)(?:_|\z)/)) ?
+      'r' : 'w';
 }
 
 sub api_load_by_id
@@ -209,8 +209,8 @@ sub api_load_by_id
   my ($class, $s, $id, $action, $opts) = @_;
   my $obj;
 
-  $id //= $s->Get('crux.id') or
-    croak "Trying to load object ($class) without id";
+  croak "Trying to load object ($class) without id"
+    unless defined($id);
 
   $opts //= { ':lock' => $class->_api_action_to_lock($s, $action) };
 
@@ -230,8 +230,8 @@ sub api_object
 {
   # my ($class, $s, $id, $action, $opts) = @_;
   my ($class, $s, @rest) = @_;
-  return $s->Get('crux.obj') //
-    $s->Set('crux.obj' => $class->api_load_by_id($s, @rest));
+  return $s->Get('crux_obj') //
+    $s->Set('crux_obj' => $class->api_load_by_id($s, @rest));
 }
 
 sub api_extract_verify_load
@@ -252,8 +252,8 @@ sub api_extract_verify_object
   # my ($class, $s, $action, $opts,
   #     $route_params, $query_param, $post_data) = @_;
   my ($class, $s, @rest) = @_;
-  return $s->Get('crux.obj') //
-      $s->Set('crux.obj' => $class->api_extract_verify_load($s, @rest));
+  return $s->Get('crux_obj') //
+      $s->Set('crux_obj' => $class->api_extract_verify_load($s, @rest));
 }
 
 # ---- Verify -----------------------------------------------------------------
@@ -446,7 +446,7 @@ sub _api_delete_permanent
 {
   my ($class, $s, $id) = @_;
 
-  my $obj = $s->Get('crux.obj');
+  my $obj = $s->Get('crux_obj');
   if ($obj)
   {
     $class->_api_db_delete($s, $obj);
@@ -504,8 +504,7 @@ sub api_call_clean
   my $s_ = ref($s)->new(
       ':base' => $s,
       @patch,
-      # 'crux.id' => undef,
-      'crux.obj' => undef);
+      'crux_obj' => undef);
 
   return $self->$method($s_, @rest);
 }
