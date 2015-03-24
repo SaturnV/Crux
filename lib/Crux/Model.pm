@@ -226,6 +226,14 @@ sub api_load_by_id
   return $obj;
 }
 
+sub api_object
+{
+  # my ($class, $s, $id, $action, $opts) = @_;
+  my ($class, $s, @rest) = @_;
+  return $s->Get('crux.obj') //
+    $s->Set('crux.obj' => $class->api_load_by_id($s, @rest));
+}
+
 sub api_extract_verify_load
 {
   # my ($class, $s, $action, $opts,
@@ -239,12 +247,13 @@ sub api_extract_verify_load
       $action, $opts);
 }
 
-sub api_object
+sub api_extract_verify_object
 {
-  # my ($class, $s, $id, $action, $opts) = @_;
+  # my ($class, $s, $action, $opts,
+  #     $route_params, $query_param, $post_data) = @_;
   my ($class, $s, @rest) = @_;
   return $s->Get('crux.obj') //
-    $s->Set('crux.obj' => $class->api_load_by_id($s, @rest));
+      $s->Set('crux.obj' => $class->api_extract_verify_load($s, @rest));
 }
 
 # ---- Verify -----------------------------------------------------------------
