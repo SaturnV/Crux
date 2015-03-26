@@ -14,6 +14,8 @@ use Carp;
 
 use Blueprint::Stash;
 
+use Crux::_Queue;
+
 ###### VARS ###################################################################
 
 my $mod_name = __PACKAGE__;
@@ -109,9 +111,12 @@ sub _api_db_delete
       $class->db_delete($s, $obj, @rest);
 }
 
+sub _ApiPrepareDbWrite { return }
+
 sub _ApiDbInsert
 {
   my $obj = shift;
+  $obj->_ApiPrepareDbWrite($_[0], 'insert');
   $obj->DbInsert(@_);
   return $obj;
 }
@@ -119,6 +124,7 @@ sub _ApiDbInsert
 sub _ApiDbUpdate
 {
   my $obj = shift;
+  $obj->_ApiPrepareDbWrite($_[0], 'update');
   $obj->DbUpdate(@_);
   return $obj;
 }
@@ -127,6 +133,36 @@ sub _ApiDbDelete
 {
   my $obj = shift;
   $obj->DbDelete(@_);
+  return $obj;
+}
+
+# ---- Delayed Update ---------------------------------------------------------
+
+sub __crux_delayed_update
+{
+  my ($s, $ret) = @_;
+
+  if (my $q = $s->Singleton('crux_delayed_update'))
+  {
+    my $obj;
+    $obj->_ApiDbUpdate($s) while ($obj = $q->Shift());
+  }
+
+  return $ret;
+}
+
+sub ApiDelayedUpdate
+{
+  my ($obj, $s) = @_;
+
+  my $q = $s->Singleton('crux_delayed_update');
+  if (!$q)
+  {
+    $q = $s->Singleton('crux_delayed_update', Crux::_Queue->new());
+    $s->BeforeCommit(\&__crux_delayed_update);
+  }
+  $q->Push($obj);
+
   return $obj;
 }
 

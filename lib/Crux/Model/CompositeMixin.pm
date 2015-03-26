@@ -33,6 +33,8 @@ sub _ApiDbInsert
   my $obj = shift;
   my ($s) = @_;
 
+  $obj->_ApiPrepareDbWrite($s, 'insert');
+
   my @cs = $obj->GetComponents($s);
   my ($c, $v, $serials, @serials);
   while (@cs)
@@ -62,6 +64,7 @@ sub _ApiDbUpdate
 {
   my $obj = shift;
   my ($s) = @_;
+  $obj->_ApiPrepareDbWrite($s, 'update');
   $_->_ApiDbUpdate(@_) foreach ($obj->GetComponents($s));
   return $obj;
 }
