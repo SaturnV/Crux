@@ -53,9 +53,12 @@ sub Shift
         $head = $_;
       }
     }
-    delete($ranks->{$head});
 
-    $ret = delete($self->{'values'}->{$head});
+    if (defined($head))
+    {
+      delete($ranks->{$head});
+      $ret = delete($self->{'values'}->{$head});
+    }
   }
 
   return $ret;
