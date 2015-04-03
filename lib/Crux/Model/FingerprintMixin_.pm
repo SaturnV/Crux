@@ -64,7 +64,7 @@ sub _FingerprintChildren
   }
   elsif (blessed($objs[0]))
   {
-    return map { $_->Fingerprint_($s, @{$rest}) } @objs
+    return map { $_->Fingerprint_($s, {}, @{$rest}) } @objs
       if $objs[0]->can('Fingerprint_');
 
     my $class = ref($self);
