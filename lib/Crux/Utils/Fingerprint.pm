@@ -9,6 +9,7 @@ use Essence::Strict;
 
 use Digest::SHA qw( sha256_hex );
 use JSON;
+use Carp;
 
 ###### EXPORTS ################################################################
 
@@ -24,9 +25,27 @@ $JsonEncoder->utf8(1);
 
 ###### SUBS ###################################################################
 
+# { 'a' => 0 } vs { 'a' => '0' }
+sub __stringify
+{
+  return defined($_[0]) ? "$_[0]" : undef unless ref($_[0]);
+  return [map { __stringify($_) } @{$_[0]}] if (ref($_[0]) eq 'ARRAY');
+
+  my $p = $_[0];
+  return { map { ($_ => __stringify($p->{$_})) } keys(%{$p}) }
+    if (ref($p) eq 'HASH');
+
+  my $ref = ref($p);
+  confess "Can't stringify '$ref'";
+}
+
 sub fingerprint
 {
-  return defined($_[0]) ? sha256_hex($JsonEncoder->encode($_[0])) : undef;
+  return defined($_[0]) ?
+      (ref($_[0]) ?
+           sha256_hex($JsonEncoder->encode(__stringify($_[0]))) :
+           $_[0]) :
+      undef;
 }
 
 ###############################################################################
