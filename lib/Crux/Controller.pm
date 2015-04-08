@@ -249,6 +249,21 @@ sub IsWebSocketRequest
   return (defined($upgrade) && (lc($upgrade) eq 'websocket'));
 }
 
+sub ResponseContentType
+{
+  return $_[0]->res()->content()->headers()->content_type();
+}
+
+sub ResponseRendered { return defined($_[0]->ResponseContentType()) }
+
+sub RenderError
+{
+  my ($self, $error) = @_;
+  $error = Essence::Logger->FormatDump($error)
+    if (ref($error) && !blessed($error));
+  return $self->reply()->exception($error);
+}
+
 # ==== Wrappers / Handlers ====================================================
 
 sub GetRouteSetting
@@ -325,7 +340,15 @@ sub MojoActionWrapper
 
   Essence::Logger->LogDebug('MojoSession:', $self->session());
 
-  return $self->NextHandler($self->MakeStash(), @_);
+  eval { $self->NextHandler($self->MakeStash(), @_) };
+  if (my $error = $@)
+  {
+    $self->RenderError($error)
+      unless $self->ResponseRendered();
+    die $error;
+  }
+
+  return;
 }
 
 ###############################################################################

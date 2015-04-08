@@ -14,13 +14,6 @@ use Crux::JsonSanitizer;
 
 ###### METHODS ################################################################
 
-sub ResponseContentType
-{
-  return $_[0]->res()->content()->headers()->content_type();
-}
-
-sub ResponseRendered { return defined($_[0]->ResponseContentType()) }
-
 # ---- extract_error ----------------------------------------------------------
 
 sub extract_error
