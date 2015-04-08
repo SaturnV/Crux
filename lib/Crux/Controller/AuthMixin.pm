@@ -14,6 +14,7 @@ sub ExtractSessionId { return }
 sub CreateSession { die }
 sub LoadSession { die }
 sub CheckSession { return }
+sub KeepaliveSession { return }
 
 # Callback
 sub _SessionChanged { return }
