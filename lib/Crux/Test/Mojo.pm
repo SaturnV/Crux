@@ -10,9 +10,12 @@ use Essence::Strict;
 use parent 'Test::Mojo';
 
 use Test::Deep;
+use Test::More;
+use List::MoreUtils;
 use Text::Balanced qw( extract_bracketed );
 use Essence::Merge qw( merge_hashes );
 use JSON;
+use Carp;
 
 ###### CONFIG #################################################################
 
@@ -86,13 +89,59 @@ sub api_is_success
        ->json_is('/success', 'great', "$desc success");
 }
 
+sub _match_error__
+{
+  my ($self, $desc, $error, $match) = @_;
+
+  croak "Don't know how to match undef" unless defined($match);
+
+  my $ref = ref($match);
+  Essence::Logger->LogDebug('DEBUG', { 'desc' => $desc, 'error' => $error, 'ref' => $ref, 'match' => $match });
+  return $error->{'code'} =~ /\Q$match\E/ unless $ref;
+  return $error->{'code'} =~ $match if ($ref eq 'Regexp');
+  return eq_deeply($error, $self->Deeply($match)) if ($ref eq 'HASH');
+  return $match->($error, $desc) if ($ref eq 'CODE');
+  croak "Don't know how to match $ref";
+}
+
+sub _match_error_
+{
+  my ($self, $desc, $error, @match) = @_;
+  return List::MoreUtils::any(
+      sub { $self->_match_error__($desc, $error, $_) },
+      @match);
+}
+
+sub _match_error
+{
+  my ($self, $desc, @match) = @_;
+
+  my $error = $self->GetContentJson('/error');
+  is(ref($error), 'ARRAY', "$desc error array");
+  ok(List::MoreUtils::any(
+         sub { $self->_match_error_($desc, $_, @match) },
+         @{$error}),
+      "$desc error code")
+    if (ref($error) eq 'ARRAY');
+
+  return $self;
+}
+
 sub api_is_error
 {
-  my ($self, $desc) = @_;
+  my $self = shift;
+
+  my $desc;
+  $desc = pop
+    if (@_ && defined($_[-1]) && !ref($_[-1]) && ($_[-1] !~ /^err(?:or)?_/));
+
   $desc //= 'api_is_error';
   $self->status_is(200, "$desc status")
        ->content_type_is('application/json', "$desc content-type")
        ->json_has('/error', "$desc error");
+  $self->_match_error($desc, @_) if @_;
+
+  return $self;
 }
 
 sub api_content_cmp
