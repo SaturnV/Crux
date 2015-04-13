@@ -18,6 +18,7 @@ sub KeepaliveSession { return }
 
 # Callback
 sub _SessionChanged { return }
+sub _AuthError { shift; die @_ }
 
 # ==== $s / Session ===========================================================
 
@@ -99,7 +100,7 @@ sub wrap_auth
   $error = $@;
 
   $self->DoKeepalive($s);
-  die $error if $error;
+  $self->_AuthError($error) if $error;
 
   return $ret;
 }
