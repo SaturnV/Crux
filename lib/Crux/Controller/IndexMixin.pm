@@ -14,9 +14,13 @@ use Crux::Utils;
 sub wrap_index
 {
   my ($self, $s, @rest) = @_;
-  my ($route, $status);
+  my ($content, $route, $status, $config, $render_opts);
 
-  eval { $status->{'content'} = $self->NextHandler($s, @rest) };
+  eval
+  {
+    ($content, $route, $status, $config, $render_opts) =
+        $self->NextHandler($s, @rest)
+  };
   if ($@)
   {
     my ($msg, $code, $json) = Crux::Utils::extract_error($@);
@@ -28,10 +32,11 @@ sub wrap_index
   }
   else
   {
-    $route = substr($self->req()->url()->path()->to_string(), 1);
+    $status->{'content'} = $content if defined($content);
+    $route //= substr($self->req()->url()->path()->to_string(), 1);
   }
 
-  $self->RenderIndex($s, $route, $status);
+  $self->RenderIndex($s, $route, $status, $config, $render_opts);
 }
 
 ###############################################################################
