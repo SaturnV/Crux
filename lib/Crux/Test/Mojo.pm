@@ -25,7 +25,9 @@ sub __deeply
 
   if (ref($ret) eq 'ARRAY')
   {
-    $ret = bag(map { __deeply($_) } @{$ret});
+    $ret = (scalar(@{$ret}) > 1) ?
+        bag(map { __deeply($_) } @{$ret}) :
+        [map { __deeply($_) } @{$ret}];
   }
   elsif (ref($ret) eq 'HASH')
   {
