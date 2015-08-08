@@ -30,7 +30,9 @@ sub new
 {
   # my $class = shift;
   my $self = shift->next::method(@_);
-  return $self->_Initialize();
+  $self->_Initialize()
+    unless ($Crux::App && ($Crux::App eq $self));
+  return $self;
 }
 
 sub startup

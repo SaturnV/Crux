@@ -42,7 +42,7 @@ our $EventQueueLength = $ENV{'CRUX_REALTIME_BACKLOG'} // 100;
 sub new
 {
   # my $self = bless({}, $class);
-  return bless({}, $_[0]);
+  return bless({}, $_[0])->_Initialize();
 }
 
 sub _Initialize
