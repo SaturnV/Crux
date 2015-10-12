@@ -116,8 +116,17 @@ sub _ApiPrepareDbWrite { return }
 sub _ApiDbInsert
 {
   my $obj = shift;
+
   $obj->_ApiPrepareDbWrite($_[0], 'insert');
-  $obj->DbInsert(@_);
+
+  eval { $obj->DbInsert(@_) };
+  if (my $err = $@)
+  {
+    die { 'code' => 'duplicate_object', '_key' => $1 }
+      if ($err =~ /Duplicate entry '.*?' for key '(.*?)'/);
+    die $err;
+  }
+
   return $obj;
 }
 
