@@ -44,7 +44,11 @@ sub wrap_json
 
     if (defined($json))
     {
-      $ret = { 'error' => $json };
+      $ret = { 'error' =>
+          (ref($json) eq 'HASH') ?
+              { map { ($_ => $json->{$_} ) }
+                    grep { !/^_/ } keys(%{$json}) } :
+              $json };
       $ret->{'content'} = $content
         if defined($content);
     }
