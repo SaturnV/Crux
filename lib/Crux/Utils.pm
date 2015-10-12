@@ -60,7 +60,8 @@ sub extract_error
     $code = 'err_or';
   }
 
-  return ($msg, $code, $json, $content);
+  return ($msg, $code, $json, $content) if wantarray;
+  return $code;
 }
 
 ###############################################################################
