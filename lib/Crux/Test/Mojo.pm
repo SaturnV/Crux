@@ -12,9 +12,8 @@ use parent 'Test::Mojo';
 use Test::Deep;
 use Test::More;
 use List::MoreUtils;
-use Text::Balanced qw( extract_bracketed );
 use Essence::Merge qw( merge_hashes );
-use JSON;
+use Crux::Utils::Extract qw( extract_json_text extract_json );
 use Carp;
 
 ###### CONFIG #################################################################
@@ -49,23 +48,18 @@ sub GetContentJson { return shift->tx()->res()->json(@_) }
 
 sub _GetJsonText
 {
-  my ($self, $what) = @_;
-  my $json;
-
-  my $content = $self->GetContentText();
-  ($json) = extract_bracketed($content, "{[\"']}")
-    if (defined($content) &&
-        ($content =~ /^ \s* var \s+ \Q$what\E \s* = \s*/gmx));
-
-  return $json;
+  # my ($self, $what) = @_;
+  return extract_json_text(
+      scalar($_[0]->GetContentText()),
+      $_[1]);
 }
 
 sub _GetJson
 {
-  my ($self, $what) = @_;
-  my $json = $self->_GetJsonText($what);
-  $json = from_json($json) if defined($json);
-  return $json;
+  # my ($self, $what) = @_;
+  return extract_json(
+      scalar($_[0]->GetContentText()),
+      $_[1]);
 }
 
 sub GetStatus { return $_[0]->_GetJson('ntStatus') }
