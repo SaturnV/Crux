@@ -288,8 +288,14 @@ sub WrapInTransaction
       $self->MakeStash();
   ($sub, @args) = @_;
 
-  my $db = $self->GetDatabase();
-  $s->Set('db' => $db);
+  my $release_db;
+  my $db = $s->Get('db');
+  if (!$db)
+  {
+    $db = $self->GetDatabase();
+    $s->Set('db' => $db);
+    $release_db = 1;
+  }
 
   eval
   {
@@ -298,25 +304,29 @@ sub WrapInTransaction
   };
   my $error = $@;
 
-  if ($error && ($error =~ /\bdatabase error\b/i))
+  if ($error)
   {
-    warn "Database error, dropping DBH.\n";
+    $s->TriggerAfterRollback($ret);
+
+    if ($error =~ /\bdatabase error\b/i)
+    {
+      warn "Database error, dropping DBH.\n";
+      $release_db = 0;
+    }
   }
   else
+  {
+    $ret = $s->TriggerAfterCommit($ret);
+    $s->SubmitRealtimeEvents();
+  }
+
+  if ($release_db)
   {
     $self->ReleaseDatabase($db);
     $s->Set('db' => undef);
   }
 
-  if ($error)
-  {
-    $s->TriggerAfterRollback($ret);
-    die $error;
-  }
-
-  $ret = $s->TriggerAfterCommit($ret);
-  $s->SubmitRealtimeEvents();
-
+  die $error if $error;
   return $ret;
 }
 
