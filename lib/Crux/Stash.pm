@@ -41,6 +41,12 @@ sub _Trigger
 
 # -----------------------------------------------------------------------------
 
+sub BeforeBegin { return shift->_AddHook('BeforeBegin', @_) }
+sub TriggerBeforeBegin { return shift->_Trigger('BeforeBegin', @_) }
+
+sub AfterBegin { return shift->_AddHook('AfterBegin', @_) }
+sub TriggerAfterBegin { return shift->_Trigger('AfterBegin', @_) }
+
 sub BeforeCommit { return shift->_AddHook('BeforeCommit', @_) }
 sub TriggerBeforeCommit { return shift->_Trigger('BeforeCommit', @_) }
 

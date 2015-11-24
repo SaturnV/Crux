@@ -278,15 +278,32 @@ sub ReleaseDatabase
   return $self;
 }
 
+sub _InTransaction
+{
+  my ($self, $s, $sub, @args) = @_;
+  $s->TriggerAfterBegin();
+  return $s->TriggerBeforeCommit(scalar($sub->($s, @args)));
+}
+
+sub _WrapInTransaction
+{
+  # my ($self, $s, $sub, @args) = @_;
+  my ($self, @rest) = @_;
+  my ($s) = @rest;
+  $s->TriggerBeforeBegin();
+  return $s->Get('db')->wrap_in_transaction(
+      sub { $self->_InTransaction(@rest) });
+}
+
 sub WrapInTransaction
 {
-  my ($self, $s, $sub, @args) = (shift);
+  # my ($self, $s, $sub, @args) = @_;
+  my ($self, @rest) = @_;
   my $ret;
 
-  $s = (@_ && blessed($_[0]) && $_[0]->isa('Crux::Stash')) ?
-      shift :
-      $self->MakeStash();
-  ($sub, @args) = @_;
+  unshift(@rest, $self->MakeStash())
+    unless (@rest && blessed($rest[0]) && $rest[0]->isa('Crux::Stash'));
+  my $s = $rest[0];
 
   my $release_db;
   my $db = $s->Get('db');
@@ -297,11 +314,7 @@ sub WrapInTransaction
     $release_db = 1;
   }
 
-  eval
-  {
-    $ret = $db->wrap_in_transaction(
-        sub { return $s->TriggerBeforeCommit(scalar($sub->($s, @args))) });
-  };
+  $ret = eval { $self->_WrapInTransaction(@rest) };
   my $error = $@;
 
   if ($error)
