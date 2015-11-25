@@ -278,6 +278,44 @@ sub ReleaseDatabase
   return $self;
 }
 
+sub WithDatabase
+{
+  # my ($self, $s, $sub, @args) = @_;
+  my $self = shift;
+  my $s = (@_ && blessed($_[0]) && $_[0]->isa('Crux::Stash')) ?
+      shift :
+      $self->MakeStash();
+  my ($sub, @args) = @_;
+  my $ret;
+
+  my $release_db;
+  my $db = $s->Get('db');
+  if (!$db)
+  {
+    $db = $self->GetDatabase();
+    $s->Set('db' => $db);
+    $release_db = 1;
+  }
+
+  $ret = eval { $sub->($s, @args) };
+  my $error = $@;
+
+  if (defined($error) && ($error =~ /\bdatabase error\b/i))
+  {
+    warn "Database error, dropping DBH.\n";
+    $release_db = 0;
+  }
+
+  if ($release_db)
+  {
+    $self->ReleaseDatabase($db);
+    $s->Set('db' => undef);
+  }
+
+  die $error if $error;
+  return $ret;
+}
+
 sub _InTransaction
 {
   my ($self, $s, $sub, @args) = @_;
@@ -298,49 +336,31 @@ sub _WrapInTransaction
 sub WrapInTransaction
 {
   # my ($self, $s, $sub, @args) = @_;
-  my ($self, @rest) = @_;
-  my $ret;
+  my $self = shift;
+  my @s = (@_ && blessed($_[0]) && $_[0]->isa('Crux::Stash')) ?
+      (shift) :
+      ();
+  return $self->WithDatabase(@s,
+      sub
+      {
+        my @args = @_;
+        my $s = $args[0];
+        my $ret = eval { $self->_WrapInTransaction(@args) };
+        my $error = $@;
 
-  unshift(@rest, $self->MakeStash())
-    unless (@rest && blessed($rest[0]) && $rest[0]->isa('Crux::Stash'));
-  my $s = $rest[0];
+        if ($error)
+        {
+          $s->TriggerAfterRollback($ret);
+        }
+        else
+        {
+          $ret = $s->TriggerAfterCommit($ret);
+          $s->SubmitRealtimeEvents();
+        }
 
-  my $release_db;
-  my $db = $s->Get('db');
-  if (!$db)
-  {
-    $db = $self->GetDatabase();
-    $s->Set('db' => $db);
-    $release_db = 1;
-  }
-
-  $ret = eval { $self->_WrapInTransaction(@rest) };
-  my $error = $@;
-
-  if ($error)
-  {
-    $s->TriggerAfterRollback($ret);
-
-    if ($error =~ /\bdatabase error\b/i)
-    {
-      warn "Database error, dropping DBH.\n";
-      $release_db = 0;
-    }
-  }
-  else
-  {
-    $ret = $s->TriggerAfterCommit($ret);
-    $s->SubmitRealtimeEvents();
-  }
-
-  if ($release_db)
-  {
-    $self->ReleaseDatabase($db);
-    $s->Set('db' => undef);
-  }
-
-  die $error if $error;
-  return $ret;
+        die $error if $error;
+        return $ret;
+      }, @_);
 }
 
 sub WrapInTransactionEval
