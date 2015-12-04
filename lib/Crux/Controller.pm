@@ -153,7 +153,7 @@ sub _RenderIndexDefaults
   my $n;
   foreach (keys(%ENV))
   {
-    $config->{lc($1)} = $ENV{$_}
+    $config->{lc($1)} //= $ENV{$_}
       if /^CRUX_HTMLCFG_(.+)/;
     $self->stash($n => $ENV{$_})
       if (/^CRUX_HTMLVAR_(.+)/ && !defined($self->stash($n = lc($1))));
