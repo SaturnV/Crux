@@ -150,12 +150,13 @@ sub _RenderIndexDefaults
   $config->{'window_id'} //= uuid_hex();
   $self->LogDebug("Generated window_id: $config->{'window_id'}");
 
+  my $n;
   foreach (keys(%ENV))
   {
     $config->{lc($1)} = $ENV{$_}
       if /^CRUX_HTMLCFG_(.+)/;
-    $self->stash(lc($1) => $ENV{$_})
-      if /^CRUX_HTMLVAR_(.+)/;
+    $self->stash($n => $ENV{$_})
+      if (/^CRUX_HTMLVAR_(.+)/ && !defined($self->stash($n = lc($1))));
   }
 }
 
