@@ -12,6 +12,12 @@ use Crux::Utils;
 
 ###### METHODS ################################################################
 
+sub JsonError
+{
+  # my ($self, $s, $error) = @_;
+  return $_[2];
+}
+
 sub wrap_json
 {
   my ($self, $s) = (shift, shift);
@@ -51,6 +57,8 @@ sub wrap_json
               $json };
       $ret->{'content'} = $content
         if defined($content);
+
+      $ret = $self->JsonError($s, $ret);
     }
   }
   else
